@@ -74,7 +74,7 @@ def main():
                       answ = input('Showdown? (Y/n)')
                       if answ == 'n' or answ == 'N':
                           sys.exit(0)
-      winners = hand.paywinners()
+      winners = hand.showdown()
       for w in winners:
           print(w.name(), w.showhand())
       if len(winners) == 1:

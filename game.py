@@ -68,6 +68,9 @@ class Game:
 
     def newhand(self):
         for player in self.__players:
+            if player.getchips() <= 0:
+                self.__players.remove(player)
+        for player in self.__players:
             player.reset()
         self.__deck.reset()
         self.__deck.shuffle()
@@ -92,3 +95,6 @@ class Game:
 
     def getcurrentbet(self):
         return self.__hand.currentbet()
+
+    def numberofplayers(self):
+        return len(self.__players)

@@ -16,6 +16,7 @@ class Player:
         self.__hand = PlayerHand(self.__name)
         self.__totalbet = 0
         self.__active = True
+        self.__allin = False
         self.__smallblind = False
         self.__bigblind = False
 
@@ -27,6 +28,9 @@ class Player:
 
     def getplayerhand(self):
         return self.__hand
+
+    def setplayerhand(self, hand):
+        self.__hand = hand
 
     def deal(self, card):
         # receive a card
@@ -68,12 +72,24 @@ class Player:
     def gettotalbet(self):
         return self.__totalbet
 
+    def addedtopot(self, amount):
+        self.__totalbet = self.__totalbet - amount
+
     def fold(self):
         self.__hand.burnhand()
         self.__active = False
 
     def isactive(self):
         return self.__active
+
+    def allin(self):
+        self.__allin = True
+
+    def isallin(self):
+        return self.__allin
+
+    def can_act(self):
+        return (self.__active and not self.__allin)
 
     def clearbet(self):
         self.__totalbet = 0

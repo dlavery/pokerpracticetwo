@@ -11,6 +11,7 @@ class Hand:
     FLOP = 1
     TURN = 2
     RIVER = 3
+    SHOWDOWN = 4
 
     def __init__(self, deck, players, blindtimer, rules):
         self.__deck = deck
@@ -26,12 +27,14 @@ class Hand:
 
     def __setstate(self, round):
         self.__round = round
+        self.__updatepot()
+        if self.__round > Hand.RIVER:
+            return
         for player in self.__players:
             player.clearbet()
-        if self.__round == self.PREFLOP:
+        if self.__round == Hand.PREFLOP:
             self.__players[0].smallblind(self.__blinds[0])
             self.__players[1].bigblind(self.__blinds[1])
-            self.__pots[-1].addvalue(self.__blinds[0] + self.__blinds[1])
             self.__currentbet = self.__blinds[1]
             if self.playersinhand() > 2:
                 self.__nextplayer = 1
@@ -42,6 +45,47 @@ class Hand:
             self.__nextplayer = -1
         self.__firsttoact = None
 
+    def __updatepot(self):
+        for i in range(len(self.__players)):
+            lowest_allin = None
+            highest_bet = None
+            players = self.__players[:]
+            
+            for player in players:
+                if player.isallin() \
+                and (lowest_allin == None or player.gettotalbet() < lowest_allin.gettotalbet()):
+                    lowest_allin = player
+                if highest_bet == None or player.gettotalbet() > highest_bet.gettotalbet():
+                    highest_bet = player
+            
+            pot_amount = 0
+            if lowest_allin:
+                pot_amount = lowest_allin.gettotalbet()
+            elif highest_bet:
+                pot_amount = highest_bet.gettotalbet()
+
+            for player in players:
+                if player.gettotalbet() > pot_amount:
+                    self.__pots[-1].addvalue(pot_amount)
+                    player.addedtopot(pot_amount)
+                elif player.gettotalbet() > 0:
+                    self.__pots[-1].addvalue(player.gettotalbet())
+                    player.addedtopot(player.gettotalbet())
+            
+            if lowest_allin:
+                players.remove(lowest_allin)
+                if len(players) == 1 \
+                and players[0].gettotalbet() > 0:   # last player gets their money back (all-in)
+                    player[0].addchips(players[0].gettotalbet())
+                    break
+                else:
+                    self.__pots.append(Pot(players, 0)) # create a side pot
+            else:
+                break
+    
+    def setcommunity(self, community):
+        self.__community = community
+        
     def getsmallblind(self):
         return self.__blinds[0]
         
@@ -66,7 +110,7 @@ class Hand:
         # get the next player to bet
         count = 0
         resetfirsttoact = False
-        while nextplayer.isactive() == False:
+        while nextplayer.can_act() == False:
             if self.__firsttoact == None or nextplayer.name() == self.__firsttoact.name():
                 resetfirsttoact = True
             self.__nextplayer = self.__nextplayer + 1
@@ -102,6 +146,7 @@ class Hand:
         if player == None or player.name() != self.__players[self.__nextplayer].name():
             raise GameException('Player not allowed')   # unexpected player
 
+        all_in = False
         if action == 'call':        # shortcut call action
             action = 'bet'
             amount = self.__currentbet - player.gettotalbet()
@@ -113,8 +158,10 @@ class Hand:
             if amount < 0:
                 raise GameException('Negative raise not allowed')
         elif action == 'all-in':    # shortcut all-in action
+            all_in = True
             action = 'bet'
             amount = player.getchips()
+            player.allin()
 
         if action not in self.__nextplayeractions:
             raise GameException('Action not allowed')
@@ -125,22 +172,18 @@ class Hand:
         if action == 'check':
             pass
         elif action == 'bet':
-            all_in_short_stacked = False
             if amount > player.getchips():
                 raise GameException("Can't bet more than your stack")
             newcurrentbet = player.gettotalbet() + amount
             if newcurrentbet == self.__currentbet:
                 pass    # just a call
-            elif amount < self.__blinds[1]:
+            elif amount < self.__blinds[1] and not all_in:
                 raise GameException("Bet minimum is big blind")
-            if newcurrentbet < self.__currentbet:
-                all_in_short_stacked = True
-            elif newcurrentbet > self.__currentbet:
+            if newcurrentbet > self.__currentbet:
                 self.__firsttoact = player
             player.makebet(amount)
-            if all_in_short_stacked == False:
+            if player.gettotalbet() > self.__currentbet:
                 self.__currentbet = player.gettotalbet()
-            self.__pots[-1].addvalue(amount)
         elif action == 'fold':
             player.fold()
         else:
@@ -195,7 +238,9 @@ class Hand:
     def setcommunity(self, cardlist):
         self.__community.setcards(cardlist)
 
-    def paywinners(self):
+    def showdown(self):
+        self.__setstate(Hand.SHOWDOWN)
+        
         for pot in self.__pots:
             winners = []
             for player in pot.getplayers():
@@ -213,6 +258,7 @@ class Hand:
                 dedup = []
                 i = 0
                 highvalue = 0
+                # look at each card in the hand to work out who has highest kicker
                 while i < 5:
                     for winner in winners:
                         cards = winner.getplayerhand().gethand()
@@ -228,18 +274,22 @@ class Hand:
                     dedup = []
                     highvalue = 0
                     i = i + 1
-
+            
             pot.setwinners(winners)
-            the_pot = pot.getvalue()
 
-            while the_pot > 0:
-                for winner in winners:
-                    winner.addchips(1)
-                    the_pot = the_pot - 1
-                    if the_pot < 1:
-                        break
-
+        self.paywinners()
         winners = []
         for pot in self.__pots:
             winners = winners + pot.getwinners()
         return winners
+        
+    def paywinners(self):
+        for pot in self.__pots:
+            the_pot = pot.getvalue()
+
+            while the_pot > 0:
+                for winner in pot.getwinners():
+                    winner.addchips(1)
+                    the_pot = the_pot - 1
+                    if the_pot < 1:
+                        break

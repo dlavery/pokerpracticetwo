@@ -3,6 +3,8 @@ from game import Game
 from gameexception import GameException
 from gameoverexception import GameOverException
 from player import Player
+from playerhand import PlayerHand
+from community import Community
 from card import Card
 from rules import Rules
 
@@ -10,7 +12,7 @@ class TestGame(unittest.TestCase):
 
     def setUp(self):
         pass
-       
+    '''
     def test_maximumplayers(self):
         game = Game()
         gamefull = False
@@ -197,7 +199,7 @@ class TestGame(unittest.TestCase):
         bob.deal(Card('8', 'D'))
         bob.deal(Card('K', 'D'))
         hand.setcommunity([Card('K', 'S'), Card('7', 'H'), Card('A', 'H'), Card('8', 'S'), Card('2', 'S')])
-        winners = hand.paywinners()
+        winners = hand.showdown()
         self.assertEqual(len(winners), 1)
         self.assertEqual(winners[0].name(), 'Bob')
 
@@ -213,7 +215,7 @@ class TestGame(unittest.TestCase):
         bob.deal(Card('8', 'D'))
         bob.deal(Card('K', 'D'))
         hand.setcommunity([Card('4', 'S'), Card('7', 'H'), Card('A', 'H'), Card('8', 'S'), Card('2', 'S')])
-        winners = hand.paywinners()
+        winners = hand.showdown()
         self.assertEqual(len(winners), 1)
         self.assertEqual(winners[0].name(), 'Bob')
 
@@ -229,7 +231,7 @@ class TestGame(unittest.TestCase):
         bob.deal(Card('8', 'D'))
         bob.deal(Card('Q', 'D'))
         hand.setcommunity([Card('4', 'S'), Card('7', 'H'), Card('A', 'H'), Card('8', 'S'), Card('2', 'S')])
-        winners = hand.paywinners()
+        winners = hand.showdown()
         self.assertEqual(len(winners), 2)
         self.assertEqual(winners[0].name(), 'Alice')
         self.assertEqual(winners[1].name(), 'Bob')
@@ -246,7 +248,7 @@ class TestGame(unittest.TestCase):
         bob.deal(Card('7', 'D'))
         bob.deal(Card('10', 'D'))
         hand.setcommunity([Card('8', 'S'), Card('8', 'H'), Card('A', 'H'), Card('Q', 'S'), Card('10', 'S')])
-        winners = hand.paywinners()
+        winners = hand.showdown()
         self.assertEqual(len(winners), 1)
         self.assertEqual(winners[0].name(), 'Alice')
 
@@ -572,7 +574,7 @@ class TestGame(unittest.TestCase):
         except GameOverException:
             pass
         finally:
-            winners = hand.paywinners()
+            winners = hand.showdown()
         winner = winners[0]
         self.assertEqual(len(winners), 1)
         self.assertEqual(winner.name(), 'Bob')
@@ -610,7 +612,7 @@ class TestGame(unittest.TestCase):
         except GameOverException as e:
             pass
         finally:
-            winners = hand.paywinners()
+            winners = hand.showdown()
         win = int(800 / len(winners))
         winningnames = []
         for winner in winners:
@@ -676,7 +678,7 @@ class TestGame(unittest.TestCase):
         except GameOverException:
             pass
         finally:
-            winners = hand.paywinners()
+            winners = hand.showdown()
         win = int(3200 / len(winners))
         winningnames = []
         for winner in winners:
@@ -748,7 +750,7 @@ class TestGame(unittest.TestCase):
         except GameOverException as e:
             pass
         finally:
-            winners = hand.paywinners()
+            winners = hand.showdown()
         win = int(4800 / len(winners))
         winningnames = []
         for winner in winners:
@@ -806,7 +808,7 @@ class TestGame(unittest.TestCase):
         except GameOverException as e:
             pass
         finally:
-            winners = hand.paywinners()
+            winners = hand.showdown()
         win = int(800 / len(winners))
         winningnames = []
         for winner in winners:
@@ -860,7 +862,7 @@ class TestGame(unittest.TestCase):
         except GameOverException as e:
             pass
         finally:
-            winners = hand.paywinners()
+            winners = hand.showdown()
         win = int(800 / len(winners))
         winningnames = []
         for winner in winners:
@@ -938,7 +940,7 @@ class TestGame(unittest.TestCase):
         except GameOverException as e:
             pass
         finally:
-            winners = hand.paywinners()
+            winners = hand.showdown()
         win = int(2700 / len(winners))
         winningnames = []
         for winner in winners:
@@ -1012,7 +1014,7 @@ class TestGame(unittest.TestCase):
             raise e1
         except GameOverException as e2:
             raise e2
-
+    '''
     def test_big_blind_all_in(self):
         try:
             game = Game()
@@ -1028,36 +1030,48 @@ class TestGame(unittest.TestCase):
             hand.deal()
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'John')
+            print('John')
             hand.act(actor, 'call', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Jill')
+            print('Jill')
             hand.act(actor, 'call', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Alice')
+            print('Alice')
             hand.act(actor, 'call', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Bob')
+            print('Bob')
             hand.act(actor, 'all-in', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'John')
+            print('John 2')
             hand.act(actor, 'all-in', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Jill')
+            print('Jill 2')
             hand.act(actor, 'fold', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Alice')
+            print('Alice 2')
             hand.act(actor, 'fold', 0)
             (actor, options) = hand.nexttobet()
+            print('None')
             self.assertEqual(actor, None)
+            print('Flop')
             hand.flop()
+            print('Turn')
             hand.turn()
+            print('River')
             hand.river()
         except GameException as e1:
             raise e1
         except GameOverException as e2:
             raise e2
         finally:
-            winners = hand.paywinners()
+            print('Before showdown')
+            winners = hand.showdown()
         win = int(10400 / len(winners))
         winningnames = []
         for winner in winners:
@@ -1075,7 +1089,7 @@ class TestGame(unittest.TestCase):
             self.assertEqual(bob.getchips(), 0)
         if 'John' not in winningnames:
             self.assertEqual(john.getchips(), 0)
-
+'''
     def test_big_blind_fold(self):
         game = Game()
         alice = Player('Alice')
@@ -1141,6 +1155,91 @@ class TestGame(unittest.TestCase):
         hand.act(actor, 'check')
         (actor, options) = hand.nexttobet()
         self.assertEqual(actor, None)
-
+    
+    def test_allin(self):
+        game = Game()
+        alice = Player('Alice', chipstack=5000)
+        bob = Player('Bob', chipstack=5000)
+        john = Player('John', chipstack=5000)
+        jill = Player('Jill', chipstack=1000)
+        game.addplayer(alice)
+        game.addplayer(bob)
+        game.addplayer(john)
+        game.addplayer(jill)
+        hand = game.newhand()
+        hand.deal()
+        ph = PlayerHand('Alice')
+        ph.addcard(Card('9', 'C'))
+        ph.addcard(Card('10', 'C'))
+        alice.setplayerhand(ph)
+        ph = PlayerHand('Bob')
+        ph.addcard(Card('K', 'D'))
+        ph.addcard(Card('Q', 'C'))
+        bob.setplayerhand(ph)
+        ph = PlayerHand('John')
+        ph.addcard(Card('10', 'S'))
+        ph.addcard(Card('10', 'D'))
+        bob.setplayerhand(ph)
+        ph = PlayerHand('Jill')
+        ph.addcard(Card('5', 'D'))
+        ph.addcard(Card('5', 'S'))
+        jill.setplayerhand(ph)
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'John')
+        hand.act(actor, 'call')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Jill')
+        hand.act(actor, 'all-in', 0)
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Alice')
+        hand.act(actor, 'call', 0)
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Bob')
+        hand.act(actor, 'call')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'John')
+        hand.act(actor, 'call')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor, None)
+        hand.flop()
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Alice')
+        hand.act(actor, 'check')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Bob')
+        hand.act(actor, 'check')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'John')
+        hand.act(actor, 'check')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor, None)
+        hand.turn()
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Alice')
+        hand.act(actor, 'check')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Bob')
+        hand.act(actor, 'check')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'John')
+        hand.act(actor, 'check')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor, None)
+        hand.river()
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Alice')
+        hand.act(actor, 'check')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Bob')
+        hand.act(actor, 'check')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'John')
+        hand.act(actor, 'check')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor, None)
+        comm = Community()
+        comm.addcard(Card('K', 'C'), Card('2', 'D'), Card('A', 'H'), Card('9', 'H'), Card('2', 'S'))
+        hand.setcommunity(comm)
+    '''
 if __name__ == '__main__':
     unittest.main()
