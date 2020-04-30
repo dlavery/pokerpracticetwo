@@ -27,12 +27,11 @@ class Hand:
 
     def __setstate(self, round):
         self.__round = round
-        self.__updatepot()
-        if self.__round > Hand.RIVER:
-            return
+        if self.__round > self.PREFLOP:
+            self.__updatepot()
         for player in self.__players:
             player.clearbet()
-        if self.__round == Hand.PREFLOP:
+        if self.__round == self.PREFLOP:
             self.__players[0].smallblind(self.__blinds[0])
             self.__players[1].bigblind(self.__blinds[1])
             self.__currentbet = self.__blinds[1]
@@ -46,7 +45,59 @@ class Hand:
         self.__firsttoact = None
 
     def __updatepot(self):
-        for i in range(len(self.__players)):
+        print('Round', self.__round)
+        # No pots? What are you doing here?
+        if len(self.__pots) == 0:
+            return
+        
+        players = self.__players[:]
+        
+        # Find everyone who's all in
+        allins = []
+        for player in players:
+            if player.isallin():
+                allins.append((player.gettotalbet(), player.name(), player))
+        allins.sort(key=lambda player: player[0])
+
+        # fill the current pot and create a new side pot/pots
+        last_allin = 0
+        allin_count = 0
+        for allin in allins:
+            allin_count = allin_count + 1
+            print('allin', allin_count, allin[2].name(), allin[2].gettotalbet())
+            if allin[0] > last_allin:   # not already processed this all in bet
+                player_count = 0
+                for player in players:
+                    player_count = player_count + 1
+                    print('player', player_count, player.name(), player.gettotalbet())
+                    if allin[0] > player.gettotalbet():
+                        print('add to pot 1', player.gettotalbet(), player.name())
+                        self.__pots[-1].addvalue(player.gettotalbet())
+                        player.addedtopot(player.gettotalbet())
+                    else:
+                        print('add to pot 2',allin[0],player.name())
+                        self.__pots[-1].addvalue(allin[0])
+                        player.addedtopot(allin[0])
+            last_allin = allin[0]
+            players.remove(allin[2])
+            if len(players) > 1:    # only create side pot if more than 1 player
+                self.__pots.append(Pot(players, 0))
+            else:
+                players[0].addchips(player.gettotalbet()) # give the remaining chips back
+                players = []
+                break
+
+        # fill the main pot or side pot for remaining players
+        for player in players:
+            if player.gettotalbet() == 0:
+                continue
+            print('add to pot 3', player.gettotalbet(), player.name())
+            self.__pots[-1].addvalue(player.gettotalbet())
+            player.addedtopot(player.gettotalbet())
+
+        print('pot', self.__pots[-1].getvalue())
+        '''
+        while True:
             lowest_allin = None
             highest_bet = None
             players = self.__players[:]
@@ -60,8 +111,10 @@ class Hand:
             
             pot_amount = 0
             if lowest_allin:
+                print(lowest_allin.name())
                 pot_amount = lowest_allin.gettotalbet()
             elif highest_bet:
+                print(highest_bet.name())
                 pot_amount = highest_bet.gettotalbet()
 
             for player in players:
@@ -82,10 +135,8 @@ class Hand:
                     self.__pots.append(Pot(players, 0)) # create a side pot
             else:
                 break
+        '''
     
-    def setcommunity(self, community):
-        self.__community = community
-        
     def getsmallblind(self):
         return self.__blinds[0]
         
@@ -199,7 +250,7 @@ class Hand:
         for i in range(0, 2):
             for player in self.__players:
                 player.deal(self.__deck.card())
-        self.__setstate(Hand.PREFLOP)
+        self.__setstate(self.PREFLOP)
         self.__firsttoact == None
 
     def playersinhand(self):
@@ -214,7 +265,7 @@ class Hand:
             raise GameOverException('Hand is won already')
         for i in range (0, 3):
             self.__community.addcard(self.__deck.card())
-        self.__setstate(Hand.FLOP)
+        self.__setstate(self.FLOP)
 
     def burnandturn(self):
         self.__deck.card()                              # burn one
@@ -223,13 +274,13 @@ class Hand:
     def turn(self):
         if self.playersinhand() < 2:
             raise GameOverException('Hand is won already')
-        self.__setstate(Hand.TURN)
+        self.__setstate(self.TURN)
         self.burnandturn()
 
     def river(self):
         if self.playersinhand() < 2:
             raise GameOverException('Hand is won already')
-        self.__setstate(Hand.RIVER)
+        self.__setstate(self.RIVER)
         self.burnandturn()
 
     def getcommmunity(self):
@@ -239,8 +290,8 @@ class Hand:
         self.__community.setcards(cardlist)
 
     def showdown(self):
-        self.__setstate(Hand.SHOWDOWN)
-        
+        self.__setstate(self.SHOWDOWN)
+        print('showdown 1')
         for pot in self.__pots:
             winners = []
             for player in pot.getplayers():
@@ -276,18 +327,22 @@ class Hand:
                     i = i + 1
             
             pot.setwinners(winners)
+        print('showdown 2')
 
-        self.paywinners()
+        self.__paywinners()
+        print('showdown 3')
         winners = []
         for pot in self.__pots:
             winners = winners + pot.getwinners()
         return winners
         
-    def paywinners(self):
+    def __paywinners(self):
         for pot in self.__pots:
             the_pot = pot.getvalue()
 
             while the_pot > 0:
+                if len(pot.getwinners()) == 0:
+                    break
                 for winner in pot.getwinners():
                     winner.addchips(1)
                     the_pot = the_pot - 1
