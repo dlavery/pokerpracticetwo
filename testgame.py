@@ -1030,54 +1030,39 @@ class TestGame(unittest.TestCase):
             hand.deal()
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'John')
-            #print('John')
             hand.act(actor, 'call', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Jill')
-            #print('Jill')
             hand.act(actor, 'call', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Alice')
-            #print('Alice')
             hand.act(actor, 'call', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Bob')
-            #print('Bob')
             hand.act(actor, 'all-in', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'John')
-            #print('John 2')
             hand.act(actor, 'all-in', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Jill')
-            #print('Jill 2')
             hand.act(actor, 'fold', 0)
             (actor, options) = hand.nexttobet()
             self.assertEqual(actor.name(), 'Alice')
-            #print('Alice 2')
             hand.act(actor, 'fold', 0)
             (actor, options) = hand.nexttobet()
-            #print('None')
             self.assertEqual(actor, None)
-            #print('Flop')
             hand.flop()
-            #print('Turn')
             hand.turn()
-            #print('River')
             hand.river()
         except GameException as e1:
             raise e1
         except GameOverException as e2:
             raise e2
         finally:
-            #print('Before showdown')
             winners = hand.showdown()
-            #print('After showdown')
         win = int(10400 / len(winners))
         winningnames = []
         pots = hand.getpots()
-        for pot in pots:
-            print(pot.getvalue(), len(pot.getplayers()))
         self.assertEqual(len(pots), 1)
         self.assertGreater(pots[0].getvalue(), 0)
         for winner in winners:
@@ -1095,7 +1080,7 @@ class TestGame(unittest.TestCase):
             self.assertEqual(bob.getchips(), 0)
         if 'John' not in winningnames:
             self.assertEqual(john.getchips(), 0)
-'''
+    '''
     def test_big_blind_fold(self):
         game = Game()
         alice = Player('Alice')
@@ -1161,7 +1146,7 @@ class TestGame(unittest.TestCase):
         hand.act(actor, 'check')
         (actor, options) = hand.nexttobet()
         self.assertEqual(actor, None)
-    
+    '''
     def test_allin(self):
         game = Game()
         alice = Player('Alice', chipstack=5000)
@@ -1244,6 +1229,6 @@ class TestGame(unittest.TestCase):
         (actor, options) = hand.nexttobet()
         self.assertEqual(actor, None)
         hand.setcommunity([Card('K', 'C'), Card('2', 'D'), Card('A', 'H'), Card('9', 'H'), Card('2', 'S')])
-    '''
+
 if __name__ == '__main__':
     unittest.main()

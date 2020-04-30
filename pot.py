@@ -3,7 +3,7 @@ class Pot:
     def __init__(self, players, val):
         self.__players = players
         self.__value = val
-        self._winners = []
+        self.__winners = []
 
     def getplayers(self):
         return self.__players

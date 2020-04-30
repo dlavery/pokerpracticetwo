@@ -45,12 +45,11 @@ class Hand:
         self.__firsttoact = None
 
     def __updatepot(self):
-        print('Round', self.__round)
         # No pots? What are you doing here?
         if len(self.__pots) == 0:
             return
         
-        players = self.__players[:]
+        players = self.__pots[-1].getplayers()[:]
         
         # Find everyone who's all in
         allins = []
@@ -64,18 +63,14 @@ class Hand:
         allin_count = 0
         for allin in allins:
             allin_count = allin_count + 1
-            print('allin', allin_count, allin[2].name(), allin[2].gettotalbet())
             if allin[0] > last_allin:   # not already processed this all in bet
                 player_count = 0
                 for player in players:
                     player_count = player_count + 1
-                    print('player', player_count, player.name(), player.gettotalbet())
                     if allin[0] > player.gettotalbet():
-                        print('add to pot 1', player.gettotalbet(), player.name())
                         self.__pots[-1].addvalue(player.gettotalbet())
                         player.addedtopot(player.gettotalbet())
                     else:
-                        print('add to pot 2',allin[0],player.name())
                         self.__pots[-1].addvalue(allin[0])
                         player.addedtopot(allin[0])
             last_allin = allin[0]
@@ -91,51 +86,8 @@ class Hand:
         for player in players:
             if player.gettotalbet() == 0:
                 continue
-            print('add to pot 3', player.gettotalbet(), player.name())
             self.__pots[-1].addvalue(player.gettotalbet())
             player.addedtopot(player.gettotalbet())
-
-        print('pot', self.__pots[-1].getvalue())
-        '''
-        while True:
-            lowest_allin = None
-            highest_bet = None
-            players = self.__players[:]
-            
-            for player in players:
-                if player.isallin() \
-                and (lowest_allin == None or player.gettotalbet() < lowest_allin.gettotalbet()):
-                    lowest_allin = player
-                if highest_bet == None or player.gettotalbet() > highest_bet.gettotalbet():
-                    highest_bet = player
-            
-            pot_amount = 0
-            if lowest_allin:
-                print(lowest_allin.name())
-                pot_amount = lowest_allin.gettotalbet()
-            elif highest_bet:
-                print(highest_bet.name())
-                pot_amount = highest_bet.gettotalbet()
-
-            for player in players:
-                if player.gettotalbet() > pot_amount:
-                    self.__pots[-1].addvalue(pot_amount)
-                    player.addedtopot(pot_amount)
-                elif player.gettotalbet() > 0:
-                    self.__pots[-1].addvalue(player.gettotalbet())
-                    player.addedtopot(player.gettotalbet())
-            
-            if lowest_allin:
-                players.remove(lowest_allin)
-                if len(players) == 1 \
-                and players[0].gettotalbet() > 0:   # last player gets their money back (all-in)
-                    player[0].addchips(players[0].gettotalbet())
-                    break
-                else:
-                    self.__pots.append(Pot(players, 0)) # create a side pot
-            else:
-                break
-        '''
     
     def getsmallblind(self):
         return self.__blinds[0]
@@ -291,8 +243,9 @@ class Hand:
 
     def showdown(self):
         self.__setstate(self.SHOWDOWN)
-        print('showdown 1')
         for pot in self.__pots:
+            if pot.getvalue() == 0:
+                continue
             winners = []
             for player in pot.getplayers():
                 if player.isactive() == False:
@@ -327,16 +280,18 @@ class Hand:
                     i = i + 1
             
             pot.setwinners(winners)
-        print('showdown 2')
 
         self.__paywinners()
-        print('showdown 3')
         winners = []
         for pot in self.__pots:
             winners = winners + pot.getwinners()
         return winners
         
     def __paywinners(self):
+        for pot in self.__pots[:]:
+            if pot.getvalue() <= 0:
+                self.__pots.remove(pot)
+
         for pot in self.__pots:
             the_pot = pot.getvalue()
 
