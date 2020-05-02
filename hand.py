@@ -114,7 +114,7 @@ class Hand:
         count = 0
         resetfirsttoact = False
         while nextplayer.can_act() == False:
-            if self.__firsttoact == None or nextplayer.name() == self.__firsttoact.name():
+            if self.__firsttoact != None and nextplayer.name() == self.__firsttoact.name():
                 resetfirsttoact = True
             self.__nextplayer = self.__nextplayer + 1
             if self.__nextplayer >= len(self.__players):
@@ -198,6 +198,9 @@ class Hand:
     def getpots(self):
         return self.__pots
 
+    def getplayers(self):
+        return self.__players
+
     def deal(self):
         for i in range(0, 2):
             for player in self.__players:
@@ -252,8 +255,7 @@ class Hand:
                     continue
                 player.makehand(self.__community, self.__rules)
                 if winners and player.getplayerhand().getranking() > winners[0].getplayerhand().getranking(): # pick the biggest ranking
-                    winners = []
-                    winners.append(player)
+                    winners = [player]
                 elif winners and player.getplayerhand().getranking() < winners[0].getplayerhand().getranking():
                     pass
                 else:
