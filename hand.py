@@ -21,12 +21,14 @@ class Hand:
         self.__pots = [Pot(players, 0)]
         self.__community = Community()
         self.__rules = rules
-        self.__nextplayer = -1
+        #self.__nextplayer = -1
+        self.__lastplayer = None
         self.__nextplayeractions = ()
         self.__firsttoact = None
 
     def __setstate(self, round):
         self.__round = round
+        self.__lastplayer = None
         if self.__round > self.PREFLOP:
             self.__updatepot()
         for player in self.__players:
@@ -35,15 +37,38 @@ class Hand:
             self.__players[0].smallblind(self.__blinds[0])
             self.__players[1].bigblind(self.__blinds[1])
             self.__currentbet = self.__blinds[1]
-            if self.playersinhand() > 2:
-                self.__nextplayer = 1
-            else:
-                self.__nextplayer = 0
         else:
             self.__currentbet = 0
-            self.__nextplayer = -1
-        self.__firsttoact = None
 
+    # determine the first to act in each round
+    def __getfirstactor(self):
+        if self.__round == self.PREFLOP:
+            if self.playersinhand() > 2:
+                # first to act is to the left of big blind
+                starting_point = 2
+            else:
+                # first to act is small blind
+                starting_point = 0
+        else:
+            # first to act is to the left of the dealer
+            starting_point  = 0
+        player = self.__players[starting_point]
+        player_found = True
+        player_index = starting_point
+        while player.can_act() == False:
+            player_index = player_index + 1
+            if player_index >= len(self.__players):
+                player_index = 0
+            if player_index == starting_point:
+                # been round once and back to the start
+                player_found = False
+                break
+            player = self.__players[player_index]
+        if player_found:
+            return player
+        else:
+            return None
+    
     def __updatepot(self):
         # No pots? What are you doing here?
         if len(self.__pots) == 0:
@@ -105,34 +130,39 @@ class Hand:
         if self.playersinhand() <= 1:
             return (None, None)
 
-        self.__nextplayer = self.__nextplayer + 1
-        if self.__nextplayer >= len(self.__players):
-            self.__nextplayer = 0
-        nextplayer = self.__players[self.__nextplayer]
+        if self.__lastplayer == None:
+            if self.__firsttoact != None and self.__firsttoact.can_act() == True:
+                nextplayer = self.__firsttoact
+                self.__lastplayer = self.__firsttoact
+            else:
+                nextplayer = None
+                self.__lastplayer = None
+                return (None, None)
+        else:
+            first_player = self.__players.index(self.__firsttoact)
+            player_index = self.__players.index(self.__lastplayer) + 1
+            if player_index >= len(self.__players):
+                player_index = 0
+            nextplayer = self.__players[player_index]
+            # get the next player to bet
+            while nextplayer.can_act() == False:
+                if player_index == first_player:    # gone back around and not found anyone to act
+                    nextplayer = None
+                    break
+                player_index = player_index + 1
+                if player_index >= len(self.__players):
+                    player_index = 0
+                nextplayer = self.__players[player_index]
 
-        # get the next player to bet
-        count = 0
-        resetfirsttoact = False
-        while nextplayer.can_act() == False:
-            if self.__firsttoact != None and nextplayer.name() == self.__firsttoact.name():
-                resetfirsttoact = True
-            self.__nextplayer = self.__nextplayer + 1
-            if self.__nextplayer >= len(self.__players):
-                self.__nextplayer = 0
-            nextplayer = self.__players[self.__nextplayer]
-            count = count + 1
-            if count >= len(self.__players):
-                break
+            if nextplayer == None or nextplayer.isactive() == False:  # can't find an active player
+                self.__lastplayer = None
+                return (None, None)
 
-        if nextplayer.isactive() == False:  # can't find an active player
-            return (None, None)
-        if resetfirsttoact:
-            self.__firsttoact = nextplayer
-        
-        # been all the way around and back to the start
-        if self.__firsttoact != None and nextplayer.name() == self.__firsttoact.name():
-            self.__nextplayeractions = ()
-            return (None, None)
+            # been all the way around and back to the start
+            if nextplayer.name() == self.__firsttoact.name():
+                self.__lastplayer = None
+                self.__nextplayeractions = ()
+                return (None, None)
 
         # determine the actions allowed
         if nextplayer.gettotalbet() < self.__currentbet:
@@ -140,14 +170,20 @@ class Hand:
         else:
             self.__nextplayeractions = ('check', 'bet', 'fold')
         
+        self.__lastplayer = nextplayer
         return (nextplayer, self.__nextplayeractions)
 
     def currentbet(self):
         return self.__currentbet
 
     def act(self, player, action, amount=0):
-        if player == None or player.name() != self.__players[self.__nextplayer].name():
-            raise GameException('Player not allowed')   # unexpected player
+        try:
+            if player == None \
+            or self.__players.index(player) < 0 \
+            or player.name() != self.__lastplayer.name():
+                raise GameException('Player not allowed')   # unexpected player
+        except ValueError:
+            raise GameException('Player not allowed')
 
         all_in = False
         if action == 'call':        # shortcut call action
@@ -156,6 +192,10 @@ class Hand:
             if amount < 0:
                 raise GameException('Call not allowed')
         elif action == 'raise':    # shortcut raise action
+            if player.gettotalbet() > self.getsmallblind() \
+            and self.__currentbet > self.getbigblind() \
+            and self.__currentbet < (2 * self.getbigblind()):
+                raise GameException("Cannot re-raise as previous bet was not full raise")
             action = 'bet'
             amount = amount - player.gettotalbet()
             if amount < 0:
@@ -164,13 +204,9 @@ class Hand:
             all_in = True
             action = 'bet'
             amount = player.getchips()
-            player.allin()
 
         if action not in self.__nextplayeractions:
             raise GameException('Action not allowed')
-
-        if self.__firsttoact == None:
-            self.__firsttoact = player
 
         if action == 'check':
             pass
@@ -183,10 +219,12 @@ class Hand:
             elif amount < self.__blinds[1] and not all_in:
                 raise GameException("Bet minimum is big blind")
             if newcurrentbet > self.__currentbet:
-                self.__firsttoact = player
+                self.__firsttoact = player  #re-open the betting if there's a raise
             player.makebet(amount)
             if player.gettotalbet() > self.__currentbet:
                 self.__currentbet = player.gettotalbet()
+            if player.getchips() == 0:
+                player.allin()
         elif action == 'fold':
             player.fold()
         else:
@@ -206,7 +244,7 @@ class Hand:
             for player in self.__players:
                 player.deal(self.__deck.card())
         self.__setstate(self.PREFLOP)
-        self.__firsttoact == None
+        self.__firsttoact = self.__getfirstactor()
 
     def playersinhand(self):
         playercount = 0
@@ -221,6 +259,7 @@ class Hand:
         for i in range (0, 3):
             self.__community.addcard(self.__deck.card())
         self.__setstate(self.FLOP)
+        self.__firsttoact = self.__getfirstactor()
 
     def burnandturn(self):
         self.__deck.card()                              # burn one
@@ -231,12 +270,14 @@ class Hand:
             raise GameOverException('Hand is won already')
         self.__setstate(self.TURN)
         self.burnandturn()
+        self.__firsttoact = self.__getfirstactor()
 
     def river(self):
         if self.playersinhand() < 2:
             raise GameOverException('Hand is won already')
         self.__setstate(self.RIVER)
         self.burnandturn()
+        self.__firsttoact = self.__getfirstactor()
 
     def getcommmunity(self):
         return self.__community
