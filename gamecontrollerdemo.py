@@ -8,6 +8,8 @@ def do_betting(hand):
         (actor, options) = hand.nexttobet()
         if actor == None:
             break
+        if 'bet' in options:
+            options = options + ('call', 'raise')
         print(actor.name(), 'to act', options ,'; pot:', hand.getpots()[-1].getvalue(), '; blinds:', hand.getsmallblind(), ',', hand.getbigblind(), '; stack:', actor.getchips(), '; current bet:', hand.currentbet())
         act_split = ('',)
         while act_split[0] not in options:
