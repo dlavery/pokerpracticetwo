@@ -1,6 +1,6 @@
 # pokerpracticetwo
 
-New improved poker engine
+New improved poker engine. Plays Texas Holdem no limit.
 
 ## Object Model
 
