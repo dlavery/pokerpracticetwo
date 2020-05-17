@@ -39,6 +39,7 @@ class Game:
     }
 
     def __init__(self, playerlimit=8, blindinterval=600):
+        self.ID = None
         self.__deck = Deck()
         self.__players = []
         self.__hands = []
@@ -80,6 +81,9 @@ class Game:
         self.__allowedactions = ()
         return self.__hand
 
+    def gethand(self):
+        return self.__hand
+
     def getblinds(self):
         return self.__blinds
 
@@ -90,11 +94,42 @@ class Game:
         return self.__blinds[0]
 
     def rotatedealer(self):
-        player = self.__players.pop(0)
-        self.__players.append(player)
+        if self.__players[1].getchips() <= 0:
+            # don't rotate dealers if the next player is out, 
+            # instead find the most recent dealer still in
+            for i in range(len(self.__players)):
+                player = self.__players.pop(-1)
+                self.__players.insert(0, player)
+                if player.getchips() > 0:
+                    break
+        else:
+            # rotate dealers
+            player = self.__players.pop(0)
+            self.__players.append(player)
+
+        # remove players from the game when they are out
+        for i, player in enumerate(self.__players):
+            if player.getchips() <= 0:
+                del(self.__players[i])
 
     def getcurrentbet(self):
         return self.__hand.currentbet()
 
     def numberofplayers(self):
         return len(self.__players)
+
+    def summarise(self):
+        summary = {
+            'in_progress': self.__inprogress,
+            'big_blind': self.getbigblind(),
+            'small_blind': self.getsmallblind(),
+            'blind_remaining': int(round(self.__blindtimer.gettimeremaining(), 0)),
+            'players': []
+            }
+        for player in self.__players:
+            summary['players'].append(player.name())
+        if self.__hand:
+            summary['current_hand'] = {
+                'round': self.__hand.getstatetext()
+            }
+        return summary

@@ -13,6 +13,14 @@ class Hand:
     RIVER = 3
     SHOWDOWN = 4
 
+    __STATE_TEXT = {
+        PREFLOP: 'pre-flop',
+        FLOP: 'flop',
+        TURN: 'turn',
+        RIVER: 'river',
+        SHOWDOWN: 'showdown'
+    }
+
     def __init__(self, deck, players, blindtimer, rules):
         self.__deck = deck
         self.__players = players
@@ -21,7 +29,6 @@ class Hand:
         self.__pots = [Pot(players, 0)]
         self.__community = Community()
         self.__rules = rules
-        #self.__nextplayer = -1
         self.__lastplayer = None
         self.__nextplayeractions = ()
         self.__firsttoact = None
@@ -123,6 +130,9 @@ class Hand:
     def getstate(self):
         return self.__round
 
+    def getstatetext(self):
+        return self.__STATE_TEXT[self.__round]
+        
     def getfirsttoact(self):
         return self.__firsttoact
 

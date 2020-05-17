@@ -1,4 +1,4 @@
-from datetime import datetime
+import time
 
 class BlindTimer:
 
@@ -9,10 +9,10 @@ class BlindTimer:
         self.__blinds = (self.__BLINDS[0], self.__BLINDS[0] * 2)
         self.__blindlimit = len(self.__BLINDS) - 1
         self.__blindcount = 0
-        self.__starttime = datetime.utcnow().timestamp()
+        self.__starttime = time.time()
 
     def getblinds(self):
-        ts = datetime.utcnow().timestamp()
+        ts = time.time()
         blindsup = (ts - self.__starttime) >= self.__blindinterval
         if blindsup:
             if self.__blindcount < self.__blindlimit:
@@ -26,12 +26,16 @@ class BlindTimer:
         self.__playercount = 0
         return self.__blinds
 
+    def gettimeremaining(self):
+        return (self.__starttime + self.__blindinterval - time.time())
+
 if __name__ == "__main__":
     import time
     import unittest
     class TestBlindTimer(unittest.TestCase):
         def setUp(self):
             pass
+
         def test_blinds(self):
             b = BlindTimer(1)
             blinds = b.getblinds()
@@ -45,4 +49,12 @@ if __name__ == "__main__":
             time.sleep(3)
             blinds = b.getblinds()
             self.assertEqual(blinds, (400, 800))
+
+        def test_timer(self):
+            b = BlindTimer(60)
+            time.sleep(2)
+            remaining = b.gettimeremaining()
+            self.assertGreater(remaining, 50)
+            self.assertLess(remaining, 58)
+
     unittest.main()
