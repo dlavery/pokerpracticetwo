@@ -43,8 +43,6 @@ def main():
       if answ == 'n' or answ == 'N':
           sys.exit(0)
       gamenumber = gamenumber + 1
-      if gamenumber > 1:
-          game.rotatedealer()
       hand = game.newhand()
       hand.deal()
       print('- Hand ' + str(gamenumber))

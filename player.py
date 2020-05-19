@@ -58,6 +58,12 @@ class Player:
         self.__totalbet = self.__totalbet + chips
         self.subtractchips(chips)
 
+    def reducebet(self, chips):
+        self.__totalbet = self.__totalbet - chips
+        if self.__totalbet < 0:
+            self.__totalbet = 0
+        self.addchips(chips)
+
     def smallblind(self, chips):
         self.__smallblind = True
         self.makebet(chips)
@@ -65,6 +71,9 @@ class Player:
     def bigblind(self, chips):
         self.__bigblind = True
         self.makebet(chips)
+
+    def issmallblind(self):
+        return self.__smallblind
 
     def isbigblind(self):
         return self.__bigblind
@@ -84,6 +93,9 @@ class Player:
 
     def allin(self):
         self.__allin = True
+
+    def notallin(self):
+        self.__allin = False
 
     def isallin(self):
         return self.__allin

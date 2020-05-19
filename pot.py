@@ -11,6 +11,11 @@ class Pot:
     def addvalue(self, val):
         self.__value = self.__value + val
  
+    def subtractvalue(self, val):
+        self.__value = self.__value - val
+        if self.__value < 0:
+            self.__value = 0
+ 
     def getvalue(self):
         return self.__value
 

@@ -21,7 +21,7 @@ class Hand:
         SHOWDOWN: 'showdown'
     }
 
-    def __init__(self, deck, players, blindtimer, rules):
+    def __init__(self, deck, players, blindtimer, rules, bigblindonly = False):
         self.__deck = deck
         self.__players = players
         self.__blinds = blindtimer.getblinds()
@@ -29,6 +29,7 @@ class Hand:
         self.__pots = [Pot(players, 0)]
         self.__community = Community()
         self.__rules = rules
+        self.__bigblindonly = bigblindonly
         self.__lastplayer = None
         self.__nextplayeractions = ()
         self.__firsttoact = None
@@ -41,8 +42,11 @@ class Hand:
         for player in self.__players:
             player.clearbet()
         if self.__round == self.PREFLOP:
-            self.__players[0].smallblind(self.__blinds[0])
-            self.__players[1].bigblind(self.__blinds[1])
+            if self.__bigblindonly:
+                self.__players[0].bigblind(self.__blinds[1])
+            else:
+                self.__players[0].smallblind(self.__blinds[0])
+                self.__players[1].bigblind(self.__blinds[1])
             self.__currentbet = self.__blinds[1]
         else:
             self.__currentbet = 0
@@ -90,15 +94,20 @@ class Hand:
                 allins.append((player.gettotalbet(), player.name(), player))
         allins.sort(key=lambda player: player[0])
 
+        if len(allins) > 1 and allins[-1][0] > allins[-2][0]:
+            # Remove the biggest all-in
+            allins[-1][2].reducebet(allins[-1][0] - allins[-2][0])
+            allins[-1][2].notallin()
+            self.__pots[-1].subtractvalue(allins[-1][0] - allins[-2][0])
+            del(allins[-1])
+
         # fill the current pot and create a new side pot/pots
         last_allin = 0
         allin_count = 0
         for allin in allins:
             allin_count = allin_count + 1
             if allin[0] > last_allin:   # not already processed this all in bet
-                player_count = 0
                 for player in players:
-                    player_count = player_count + 1
                     if allin[0] > player.gettotalbet():
                         self.__pots[-1].addvalue(player.gettotalbet())
                         player.addedtopot(player.gettotalbet())
@@ -107,12 +116,7 @@ class Hand:
                         player.addedtopot(allin[0])
             last_allin = allin[0]
             players.remove(allin[2])
-            if len(players) > 1:    # only create side pot if more than 1 player
-                self.__pots.append(Pot(players, 0))
-            else:
-                players[0].addchips(player.gettotalbet()) # give the remaining chips back
-                players = []
-                break
+            self.__pots.append(Pot(players, 0))
 
         # fill the main pot or side pot for remaining players
         for player in players:

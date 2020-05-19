@@ -50,6 +50,20 @@ class Game:
         self.__blinds = (0, 0)
         self.__rules = Rules()
         self.__allowedactions = ()
+        self.__rotate = False
+
+    def __rotatedealer(self):
+        big_blind_only = False
+        if self.__players[0].isbigblind():
+            # big blind must now be small blind
+            if self.__players[0].getchips() <= 0:
+                big_blind_only = True
+        else:
+            if self.__players[1].getchips() <= 0:
+                big_blind_only = True
+            player = self.__players.pop(0)
+            self.__players.append(player)
+        return big_blind_only
 
     def addplayer(self, player):
         # limit to 8 players
@@ -68,16 +82,23 @@ class Game:
         return self.__players
 
     def newhand(self):
-        for player in self.__players:
+        if self.__rotate:
+            big_blind_only = self.__rotatedealer()
+        else:
+            self.__rotate = True
+            big_blind_only = False
+        # remove players from the game when they are out
+        for i, player in enumerate(self.__players):
             if player.getchips() <= 0:
-                self.__players.remove(player)
+                del(self.__players[i])
+        # reset remaining players, shuffle deck, check blinds and start a new hand
         for player in self.__players:
             player.reset()
         self.__deck.reset()
         self.__deck.shuffle()
         self.__inprogress = True
         self.__blinds = self.__blindtimer.getblinds()
-        self.__hand = Hand(self.__deck, self.__players, self.__blindtimer, self.__rules)
+        self.__hand = Hand(self.__deck, self.__players, self.__blindtimer, self.__rules, big_blind_only)
         self.__allowedactions = ()
         return self.__hand
 
@@ -92,25 +113,6 @@ class Game:
 
     def getsmallblind(self):
         return self.__blinds[0]
-
-    def rotatedealer(self):
-        if self.__players[1].getchips() <= 0:
-            # don't rotate dealers if the next player is out, 
-            # instead find the most recent dealer still in
-            for i in range(len(self.__players)):
-                player = self.__players.pop(-1)
-                self.__players.insert(0, player)
-                if player.getchips() > 0:
-                    break
-        else:
-            # rotate dealers
-            player = self.__players.pop(0)
-            self.__players.append(player)
-
-        # remove players from the game when they are out
-        for i, player in enumerate(self.__players):
-            if player.getchips() <= 0:
-                del(self.__players[i])
 
     def getcurrentbet(self):
         return self.__hand.currentbet()
