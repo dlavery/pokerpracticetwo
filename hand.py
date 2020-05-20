@@ -54,12 +54,14 @@ class Hand:
     # determine the first to act in each round
     def __getfirstactor(self):
         if self.__round == self.PREFLOP:
-            if self.playersinhand() > 2:
-                # first to act is to the left of big blind
-                starting_point = 2
-            else:
-                # first to act is small blind
-                starting_point = 0
+            starting_point = 0
+            # first to act is to the left of big blind
+            for i, player in enumerate(self.__players):
+                if player.isbigblind():
+                    starting_point = i + 1
+                    if starting_point >= len(self.__players):
+                        starting_point = 0
+                    break
         else:
             # first to act is to the left of the dealer
             starting_point  = 0
