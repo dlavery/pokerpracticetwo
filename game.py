@@ -81,6 +81,14 @@ class Game:
     def players(self):
         return self.__players
 
+    def player(self, name):
+        player = None
+        for p in self.__players:
+            if p.name() == name:
+                player = p
+                break
+        return player
+
     def newhand(self):
         if self.__rotate:
             big_blind_only = self.__rotatedealer()
@@ -125,13 +133,31 @@ class Game:
             'in_progress': self.__inprogress,
             'big_blind': self.getbigblind(),
             'small_blind': self.getsmallblind(),
-            'blind_remaining': int(round(self.__blindtimer.gettimeremaining(), 0)),
-            'players': []
+            'blind_remaining': int(round(self.__blindtimer.gettimeremaining(), 0))
             }
-        for player in self.__players:
-            summary['players'].append(player.name())
+        summary['players'] = [{ 'name': player.name()} for player in self.__players if player.getchips() == 0]
+        if len(summary['players'] == 1):
+            summary['winner'] = summary['players'][0]['name']
         if self.__hand:
             summary['current_hand'] = {
                 'round': self.__hand.getstatetext()
             }
+            fp = self.__hand.getfirsttoact()
+            if fp:
+                summary['current_hand']['first_player'] = fp.name()
+            else:
+                summary['current_hand']['first_player'] = ''
+            lp = self.__hand.getlasttoact()
+            if lp:
+                summary['current_hand']['last_player'] = lp.name()
+            else:
+                summary['current_hand']['last_player'] = ''
+            summary['current_hand']['current_player'] = {}
+            (cp, options) = self.__hand.nexttobet()
+            if cp:
+                summary['current_hand']['current_player']['name'] = cp.name()
+                summary['current_hand']['current_player']['options'] = options
+                summary['current_hand']['done'] = "N"
+            else:
+                summary['current_hand']['done'] = "Y"
         return summary

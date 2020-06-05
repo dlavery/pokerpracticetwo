@@ -30,13 +30,15 @@ class Hand:
         self.__community = Community()
         self.__rules = rules
         self.__bigblindonly = bigblindonly
-        self.__lastplayer = None
+        self.__currentplayer = None
         self.__nextplayeractions = ()
         self.__firsttoact = None
+        self.__lasttoact = None
+        self.__winners = []
 
     def __setstate(self, round):
         self.__round = round
-        self.__lastplayer = None
+        self.__currentplayer = None
         if self.__round > self.PREFLOP:
             self.__updatepot()
         for player in self.__players:
@@ -96,8 +98,8 @@ class Hand:
                 allins.append((player.gettotalbet(), player.name(), player))
         allins.sort(key=lambda player: player[0])
 
+        # Remove the biggest all-in as they're still in
         if len(allins) > 1 and allins[-1][0] > allins[-2][0]:
-            # Remove the biggest all-in
             allins[-1][2].reducebet(allins[-1][0] - allins[-2][0])
             allins[-1][2].notallin()
             self.__pots[-1].subtractvalue(allins[-1][0] - allins[-2][0])
@@ -142,21 +144,27 @@ class Hand:
     def getfirsttoact(self):
         return self.__firsttoact
 
+    def getlasttoact(self):
+        return self.__lasttoact
+
     def nexttobet(self):
+        if self.__nextplayeractions:    # make repeat calls idempotent
+            return (self.__currentplayer, self.__nextplayeractions)
+
         if self.playersinhand() <= 1:
             return (None, None)
 
-        if self.__lastplayer == None:
+        if self.__currentplayer == None:
             if self.__firsttoact != None and self.__firsttoact.can_act() == True:
                 nextplayer = self.__firsttoact
-                self.__lastplayer = self.__firsttoact
+                self.__currentplayer = self.__firsttoact
             else:
                 nextplayer = None
-                self.__lastplayer = None
+                self.__currentplayer = None
                 return (None, None)
         else:
             first_player = self.__players.index(self.__firsttoact)
-            player_index = self.__players.index(self.__lastplayer) + 1
+            player_index = self.__players.index(self.__currentplayer) + 1
             if player_index >= len(self.__players):
                 player_index = 0
             nextplayer = self.__players[player_index]
@@ -171,12 +179,12 @@ class Hand:
                 nextplayer = self.__players[player_index]
 
             if nextplayer == None or nextplayer.isactive() == False:  # can't find an active player
-                self.__lastplayer = None
+                self.__currentplayer = None
                 return (None, None)
 
             # been all the way around and back to the start
             if nextplayer.name() == self.__firsttoact.name():
-                self.__lastplayer = None
+                self.__currentplayer = None
                 self.__nextplayeractions = ()
                 return (None, None)
 
@@ -186,7 +194,7 @@ class Hand:
         else:
             self.__nextplayeractions = ('check', 'bet', 'fold')
         
-        self.__lastplayer = nextplayer
+        self.__currentplayer = nextplayer
         return (nextplayer, self.__nextplayeractions)
 
     def currentbet(self):
@@ -196,7 +204,7 @@ class Hand:
         try:
             if player == None \
             or self.__players.index(player) < 0 \
-            or player.name() != self.__lastplayer.name():
+            or player.name() != self.__currentplayer.name():
                 raise GameException('Player not allowed')   # unexpected player
         except ValueError:
             raise GameException('Player not allowed')
@@ -214,7 +222,7 @@ class Hand:
                 raise GameException("Cannot re-raise as previous bet was not full raise")
             action = 'bet'
             amount = amount - player.gettotalbet()
-            if amount < 0:
+            if amount <= 0:
                 raise GameException('Negative raise not allowed')
         elif action == 'all-in':    # shortcut all-in action
             all_in = True
@@ -245,6 +253,11 @@ class Hand:
             player.fold()
         else:
             pass
+        self.__lasttoact = player
+        self.__nextplayeractions = ()
+
+    def getcurrentplayer(self):
+        return self.__currentplayer
 
     def getcurrentpotvalue(self):
         return self.__pots[-1].getvalue()
@@ -341,10 +354,10 @@ class Hand:
             pot.setwinners(winners)
 
         self.__paywinners()
-        winners = []
+        self.__winners = []
         for pot in self.__pots:
-            winners = winners + pot.getwinners()
-        return winners
+            self.__winners = self.__winners + pot.getwinners()
+        return self.__winners
         
     def __paywinners(self):
         for pot in self.__pots[:]:

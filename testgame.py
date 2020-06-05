@@ -1927,5 +1927,25 @@ class TestGame(unittest.TestCase):
         (actor, options) = hand.nexttobet()
         self.assertEqual(actor.name(), 'Alice')
 
+    def test_idempotency(self):
+        game = Game()
+        alice = Player('Alice', chipstack=5000)
+        bob = Player('Bob', chipstack=1000)
+        john = Player('John', chipstack=2000)
+        jill = Player('Jill', chipstack=5000)
+        game.addplayer(alice)
+        game.addplayer(bob)
+        game.addplayer(john)
+        game.addplayer(jill)
+        hand = game.newhand()
+        hand.deal()
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'John')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'John')
+        hand.act(actor, 'call')
+        (actor, options) = hand.nexttobet()
+        self.assertEqual(actor.name(), 'Jill')
+
 if __name__ == '__main__':
     unittest.main()
