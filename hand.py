@@ -12,13 +12,15 @@ class Hand:
     TURN = 2
     RIVER = 3
     SHOWDOWN = 4
+    NOT_SET = -1
 
     __STATE_TEXT = {
         PREFLOP: 'pre-flop',
         FLOP: 'flop',
         TURN: 'turn',
         RIVER: 'river',
-        SHOWDOWN: 'showdown'
+        SHOWDOWN: 'showdown',
+        NOT_SET: 'not set'
     }
 
     def __init__(self, deck, players, blindtimer, rules, bigblindonly = False):
@@ -35,6 +37,7 @@ class Hand:
         self.__firsttoact = None
         self.__lasttoact = None
         self.__winners = []
+        self.__round = self.NOT_SET
 
     def __setstate(self, round):
         self.__round = round
@@ -147,12 +150,18 @@ class Hand:
     def getlasttoact(self):
         return self.__lasttoact
 
+    def getwinners(self):
+        return self.__winners
+
     def nexttobet(self):
-        if self.__nextplayeractions:    # make repeat calls idempotent
-            return (self.__currentplayer, self.__nextplayeractions)
+        if self.getstate() == self.SHOWDOWN:
+            return (None, None)
 
         if self.playersinhand() <= 1:
             return (None, None)
+
+        if self.__nextplayeractions:    # make repeat calls idempotent
+            return (self.__currentplayer, self.__nextplayeractions)
 
         if self.__currentplayer == None:
             if self.__firsttoact != None and self.__firsttoact.can_act() == True:
@@ -283,6 +292,8 @@ class Hand:
         return playercount
 
     def flop(self):
+        if self.__round != self.PREFLOP:
+            raise GameException('Hand not ready for a flop')
         if self.playersinhand() < 2:
             raise GameOverException('Hand is won already')
         for i in range (0, 3):
@@ -295,6 +306,8 @@ class Hand:
         self.__community.addcard(self.__deck.card())    # turn one
 
     def turn(self):
+        if self.__round != self.FLOP:
+            raise GameException('Hand not ready for a turn')
         if self.playersinhand() < 2:
             raise GameOverException('Hand is won already')
         self.__setstate(self.TURN)
@@ -302,6 +315,8 @@ class Hand:
         self.__firsttoact = self.__getfirstactor()
 
     def river(self):
+        if self.__round != self.TURN:
+            raise GameException('Hand not ready for a river')
         if self.playersinhand() < 2:
             raise GameOverException('Hand is won already')
         self.__setstate(self.RIVER)
@@ -365,12 +380,12 @@ class Hand:
                 self.__pots.remove(pot)
 
         for pot in self.__pots:
+            if len(pot.getwinners()) == 0:
+                continue
             the_pot = pot.getvalue()
-
             while the_pot > 0:
-                if len(pot.getwinners()) == 0:
-                    break
                 for winner in pot.getwinners():
+                    pot.payout(winner.name(), 1)
                     winner.addchips(1)
                     the_pot = the_pot - 1
                     if the_pot < 1:

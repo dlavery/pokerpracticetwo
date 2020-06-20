@@ -4,6 +4,7 @@ class Pot:
         self.__players = players
         self.__value = val
         self.__winners = []
+        self.__payouts = {}
 
     def getplayers(self):
         return self.__players
@@ -24,4 +25,9 @@ class Pot:
 
     def getwinners(self):
         return self.__winners
-        
+
+    def payout(self, playername, val):
+        self.__payouts[playername] = self.__payouts.get(playername, 0) + val
+
+    def getpayouts(self):
+        return self.__payouts

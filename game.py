@@ -135,29 +135,47 @@ class Game:
             'small_blind': self.getsmallblind(),
             'blind_remaining': int(round(self.__blindtimer.gettimeremaining(), 0))
             }
-        summary['players'] = [{ 'name': player.name()} for player in self.__players if player.getchips() == 0]
-        if len(summary['players'] == 1):
+        summary['players'] = [{ 'name': player.name()} for player in self.__players if player.getchips() > 0]
+        if len(summary['players']) == 1:
             summary['winner'] = summary['players'][0]['name']
         if self.__hand:
             summary['current_hand'] = {
                 'round': self.__hand.getstatetext()
             }
-            fp = self.__hand.getfirsttoact()
-            if fp:
-                summary['current_hand']['first_player'] = fp.name()
-            else:
-                summary['current_hand']['first_player'] = ''
-            lp = self.__hand.getlasttoact()
-            if lp:
-                summary['current_hand']['last_player'] = lp.name()
-            else:
-                summary['current_hand']['last_player'] = ''
             summary['current_hand']['current_player'] = {}
             (cp, options) = self.__hand.nexttobet()
             if cp:
+                fp = self.__hand.getfirsttoact()
+                if fp:
+                    summary['current_hand']['first_player'] = fp.name()
+                else:
+                    summary['current_hand']['first_player'] = ''
+                lp = self.__hand.getlasttoact()
+                if lp:
+                    summary['current_hand']['last_player'] = lp.name()
+                else:
+                    summary['current_hand']['last_player'] = ''
                 summary['current_hand']['current_player']['name'] = cp.name()
                 summary['current_hand']['current_player']['options'] = options
                 summary['current_hand']['done'] = "N"
             else:
-                summary['current_hand']['done'] = "Y"
+                summary['current_hand']['done'] = 'Y'
+            if self.__hand.getwinners():
+                summary['current_hand']['winninghands'] = []
+                for winner in self.__hand.getwinners():
+                    summary['current_hand']['winninghands'].append({winner.name(): Rules.RANKING_TEXT[winner.getplayerhand().getranking()]})
+                summary['current_hand']['payout'] = []
+                for pot in self.__hand.getpots():
+                    summary['current_hand']['payout'].append(pot.getpayouts())
+                if self.__hand.playersinhand() > 1: # don't show hands if everyone has folded!
+                    summary['current_hand']['showdown'] = []
+                    for player in self.__hand.getplayers():
+                        if player.isactive() == False:
+                            continue
+                        playerhand = player.getplayerhand()
+                        hand = []
+                        for card in playerhand.gethand():
+                            hand.append(card.asdict())
+                        summary['current_hand']['showdown'].append({player.name(): hand})
+
         return summary

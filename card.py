@@ -20,3 +20,6 @@ class Card:
 
     def tup(self):
         return (self.__value, self.__suit)
+
+    def asdict(self):
+        return {'value': self.__value, 'suit': self.__suit}

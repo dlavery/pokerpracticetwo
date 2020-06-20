@@ -7,6 +7,7 @@ import logging
 import uuid
 from game import Game
 from gameexception import GameException
+from gameoverexception import GameOverException
 from player import Player
 from hand import Hand
 from functools import wraps
@@ -136,7 +137,10 @@ def act():
 def flop():
     global thegame
     hand = thegame.gethand()
-    hand.flop()
+    try:
+        hand.flop()
+    except GameOverException:
+        return(jsonify({'handfinished': 'Y'}), 200)
     return ('', 204)
 
 @app.route('/turn', methods=['POST'])
@@ -144,7 +148,29 @@ def flop():
 def turn():
     global thegame
     hand = thegame.gethand()
-    hand.turn()
+    try:
+        hand.turn()
+    except GameOverException:
+        return(jsonify({'handfinished': 'Y'}), 200)
+    return ('', 204)
+
+@app.route('/river', methods=['POST'])
+@checkrequest(False)
+def river():
+    global thegame
+    hand = thegame.gethand()
+    try:
+        hand.river()
+    except GameOverException:
+        return(jsonify({'handfinished': 'Y'}), 200)
+    return ('', 204)
+
+@app.route('/showdown', methods=['POST'])
+@checkrequest(False)
+def showdown():
+    global thegame
+    hand = thegame.gethand()
+    _ = hand.showdown()
     return ('', 204)
 
 if __name__ == '__main__':

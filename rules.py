@@ -31,6 +31,18 @@ class Rules:
         'highcard': 1
     }
 
+    RANKING_TEXT = {
+        1: 'High Card',
+        2: 'Pair',
+        3: 'Two Pair',
+        4: 'Three of a Kind',
+        5: 'Straight',
+        6: 'Flush',
+        7: 'Full House',
+        8: 'Four of a Kind',
+        9: 'Straight Flush'
+    }
+
     def __init__(self):
         pass
 
